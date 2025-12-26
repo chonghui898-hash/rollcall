@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>点名系统</title>
+<style>
+body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;
+    background:#f5f5f5;
+}
+h1{text-align:center;margin:10px 0;}
+.tabs{
+    display:flex;
+    overflow-x:auto;
+    background:#fff;
+    border-bottom:1px solid #ddd;
+}
+.tab{
+    padding:12px 16px;
+    white-space:nowrap;
+    cursor:pointer;
+}
+.tab.active{
+    color:#409eff;
+    border-bottom:2px solid #409eff;
+    font-weight:bold;
+}
+.toolbar{
+    padding:10px;
+}
+button{
+    padding:6px 10px;
+    margin-right:6px;
+    border:none;
+    border-radius:5px;
+    background:#409eff;
+    color:#fff;
+    font-size:14px;
+}
+button.danger{background:#f56c6c;}
+.students{
+    padding:10px;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+}
+.student{
+    background:#eaeaea;
+    padding:10px;
+    text-align:center;
+    border-radius:6px;
+    cursor:pointer;
+    user-select:none;
+}
+.student.absent{
+    background:#ff4d4f;
+    color:#fff;
+}
+.result-box{position:relative;}
+.copy-btn{
+    position:absolute;
+    right:18px;
+    top:8px;
+    font-size:12px;
+    padding:4px 8px;
+}
+textarea{
+    width:calc(100% - 20px);
+    margin:10px;
+    height:90px;
+    padding:8px;
+    border-radius:6px;
+    font-size:14px;
+}
+</style>
+</head>
+<body>
+
+<h1>📋 点名系统</h1>
+
+<div class="tabs" id="tabs"></div>
+
+<div class="toolbar">
+    <button onclick="addClass()">➕ 添加班级</button>
+    <button onclick="addStudent()">➕ 添加学生</button>
+    <button class="danger" onclick="removeStudent()">🗑 删除学生</button>
+    <button class="danger" onclick="removeClass()">🗑 删除班级</button>
+</div>
+
+<div class="students" id="students"></div>
+
+<h3 style="margin-left:10px;">未到情况</h3>
+<div class="result-box">
+    <button class="copy-btn" onclick="copyResult()">📋 一键复制</button>
+    <textarea id="result" readonly></textarea>
+</div>
+
+<script>
+let currentClass = 0;
+
+let data = [
+    { className:"星锐1班", students:["陈翔","赖岑晨","陈煌","邱钰宸","万馨","杨开东","余可馨","徐静煊","陈博宇","蔡昱森","吴悠","陈瑞熙","陈莹红","方钦泰","缪嘉润","叶雅婷","常棣"], absent:[] },
+    { className:"星锐3班", students:["庄岩","白金平","苏柏宇","陈博恩","赵婷婷","苏佳泓","危浩暄","罗晨赫","蔡振瀚","陈佳怡","陈志恩","陈子维","胡芷芸","黄睿洁","林博涵","郑灏洋","李雨萱","朱佩娴"], absent:[] },
+    { className:"星锐10班", students:["张森林","陈杉熠","黄宇杰","张家荣","卢昊林","冯骞","李劼","朱承霖","黄昊洋","谢涔沣","黄惠佳","郑晨熙","邱楚迪","郑颖洁","李佳银","刘芮莹","黄嘉蓓蓓","陈冠豪"], absent:[] },
+    { className:"星锐11班", students:["黄鑫荣","蔡云龙","叶锐哲","孙志涛","陈金凯","叶欣妍","陈炳鑫","陈逸乔","苏晨熙","苏韩正","杨智超","蔡品宸","张圣越","黎培锋","曹晓铃","徐凯亮","林帧袁"], absent:[] },
+    { className:"星锐12班", students:["林宇涛","林雨萱","叶凌芸","王乙茗","肖宇航","赵芝若","纪墨涵","徐明凯","伍雅欣","苏庆怡","王浩宇","陈新颜","蒋添乐","徐培菡","许梦璐","林靖豪","严思远","陈奕漩"], absent:[] },
+    { className:"星锐13班", students:["黄轶可","洪雅雯","刘芷依","林宇轩","许圣盈","钟欣妍","陈芝攸","王语涵","刘锡瑞","康呈悦","吴煜莹","闻思婷","陈梓妍","郑依依","陈晓萱","陈楚伊","李伟玮"], absent:[] }
+];
+
+function renderTabs(){
+    const tabs=document.getElementById("tabs");
+    tabs.innerHTML="";
+    data.forEach((c,i)=>{
+        const d=document.createElement("div");
+        d.className="tab"+(i===currentClass?" active":"");
+        d.innerText=c.className;
+        d.onclick=()=>{currentClass=i;render();}
+        tabs.appendChild(d);
+    });
+}
+
+function renderStudents(){
+    const box=document.getElementById("students");
+    box.innerHTML="";
+    const cls=data[currentClass];
+    cls.students.forEach((s,i)=>{
+        const d=document.createElement("div");
+        d.className="student"+(cls.absent.includes(s)?" absent":"");
+        d.innerText=s;
+        d.onclick=()=>toggleAbsent(i);
+        box.appendChild(d);
+    });
+}
+
+function toggleAbsent(i){
+    const cls=data[currentClass];
+    const name=cls.students[i];
+    const idx=cls.absent.indexOf(name);
+    idx===-1?cls.absent.push(name):cls.absent.splice(idx,1);
+    renderStudents();
+    renderResult();
+}
+
+function renderResult(){
+    let res=[];
+    data.forEach(cls=>{
+        if(cls.absent.length>0){
+            res.push(cls.className+"："+cls.absent.join("、")+" 未到");
+        }
+    });
+    document.getElementById("result").value=res.join("\n");
+}
+
+function addClass(){
+    const name=prompt("输入班级名称");
+    if(!name) return;
+    data.push({className:name,students:[],absent:[]});
+    currentClass=data.length-1;
+    render();
+}
+
+function removeClass(){
+    if(!confirm("确定删除当前班级？")) return;
+    data.splice(currentClass,1);
+    currentClass=Math.max(0,currentClass-1);
+    render();
+}
+
+function addStudent(){
+    const name=prompt("输入学生姓名");
+    if(!name) return;
+    data[currentClass].students.push(name);
+    renderStudents();
+}
+
+function removeStudent(){
+    const name=prompt("输入要删除的学生姓名");
+    if(!name) return;
+    const cls=data[currentClass];
+    cls.students=cls.students.filter(s=>s!==name);
+    cls.absent=cls.absent.filter(s=>s!==name);
+    render();
+}
+
+function copyResult(){
+    const t=document.getElementById("result");
+    if(!t.value) return alert("暂无未到信息");
+    t.select();
+    document.execCommand("copy");
+    alert("已复制，可直接粘贴");
+}
+
+function render(){
+    renderTabs();
+    renderStudents();
+    renderResult();
+}
+render();
+</script>
+
+</body>
+</html>
